@@ -1,7 +1,4 @@
-// pages/api/getImageDescription.js
-
 import { NextApiRequest, NextApiResponse } from 'next';
-import axios from 'axios';
 import { VertexAI } from '@google-cloud/vertexai';
 
 // VERTEX/GEMINI CONFIGURATION -- CHANGE THIS TO YOUR PROJECT
@@ -9,39 +6,10 @@ const projectLocation = "us-central1";
 const projectId = "hspantry-f443d";
 const model = "gemini-pro-vision"; // vision required for images/videos
 
-// Convert image URL to base64 string
-const getImageAsBase64FromURL = async (url) => {
-  try {
-    const response = await axios.get(url, { responseType: "arraybuffer" });
-    const buffer = Buffer.from(response.data, "binary");
-    return buffer.toString("base64");
-  } catch (error) {
-    console.error('Error fetching image:', error);
-    throw new Error('Failed to fetch image');
-  }
-};
-
 // Get the MIME file type required by Gemini when passing files
-const getMimeType = (url) => {
-  const extensionToMimeType = {
-    png: "image/png",
-    jpeg: "image/jpeg",
-    jpg: "image/jpeg",
-    webp: "image/webp",
-    heic: "image/heic",
-    heif: "image/heif",
-    mov: "video/mov",
-    mpeg: "video/mpeg",
-    mp4: "video/mp4",
-    mpg: "video/mpg",
-    avi: "video/avi",
-    wmv: "video/wmv",
-    mpegps: "video/mpegps",
-    flv: "video/flv",
-  };
-
-  const extension = url.split(".").pop().toLowerCase();
-  return extensionToMimeType[extension] || null;
+const getMimeTypeFromBase64 = (base64String) => {
+  const mimeTypeMatch = base64String.match(/^data:(.+);base64,/);
+  return mimeTypeMatch ? mimeTypeMatch[1] : null;
 };
 
 export default async function handler(req, res) {
@@ -49,10 +17,10 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { imageUrl, userPrompt } = req.body;
+  const { imageData, userPrompt } = req.body;
 
-  if (!imageUrl) {
-    return res.status(400).json({ error: 'Image URL is required' });
+  if (!imageData) {
+    return res.status(400).json({ error: 'Image data is required' });
   }
 
   const vertexAI = new VertexAI({
@@ -68,9 +36,7 @@ export default async function handler(req, res) {
   let requestPart = [textPart];
 
   try {
-    console.log('Fetching image as base64...');
-    const base64File = await getImageAsBase64FromURL(imageUrl);
-    const mimeType = getMimeType(imageUrl);
+    const mimeType = getMimeTypeFromBase64(imageData);
 
     if (!mimeType) {
       console.error('Unsupported file type');
@@ -79,7 +45,7 @@ export default async function handler(req, res) {
 
     const filePart = {
       inlineData: {
-        data: base64File,
+        data: imageData.split(',')[1], // Remove the base64 header
         mimeType: mimeType,
       },
     };

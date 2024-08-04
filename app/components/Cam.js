@@ -1,8 +1,6 @@
 import React, { useState, useRef } from "react";
 import axios from "axios";
 import { Camera } from "react-camera-pro";
-import { storage } from '@/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const Cam = () => {
   const camera = useRef(null);
@@ -10,38 +8,25 @@ const Cam = () => {
   const [identifiedObject, setIdentifiedObject] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const analyzeImage = async (imageUrl, userPrompt) => {
-    imageUrl="https://www.shutterstock.com/image-photo/chili-pepper-isolated-on-white-260nw-1524467540.jpg"
-    console.log(imageUrl, " WE GOT THIS");
+  const convertToBase64 = (blob) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  };
+
+  const analyzeImage = async (base64Image, userPrompt) => {
+    console.log(base64Image, " WE GOT THIS");
     try {
       const response = await axios.post('/api/getImageDescription', {
-        imageUrl,
+        imageData: base64Image,
         userPrompt,
       });
       setIdentifiedObject(response.data.text);
     } catch (error) {
       console.error('Error analyzing image:', error);
-    }
-  };
-
-  const uploadImage = async (imageBlob) => {
-    setLoading(true);
-    const imageRef = ref(storage, `images/${Date.now()}.jpg`);
-
-    try {
-      const snapshot = await uploadBytes(imageRef, imageBlob);
-      const imageURL = await getDownloadURL(snapshot.ref);
-      console.log("Image uploaded and URL obtained:", imageURL);
-
-      // Analyze the uploaded image
-      await analyzeImage(imageURL, "Describe this image");
-
-      // Optional: Clear image after analysis
-      setImage(null);
-    } catch (error) {
-      console.error("Error uploading image:", error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -53,7 +38,8 @@ const Cam = () => {
       // Convert the data URL to a Blob
       fetch(photoDataUrl)
         .then(res => res.blob())
-        .then(uploadImage)
+        .then(blob => convertToBase64(blob))
+        .then(base64Image => analyzeImage(base64Image, "Describe this image"))
         .catch(err => console.error("Error processing photo data:", err));
     } catch (error) {
       console.error("Error taking photo:", error);
