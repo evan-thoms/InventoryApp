@@ -1,9 +1,10 @@
 'use client'
 import Image from 'next/image';
 import {useState, useEffect} from 'react';
-import {Box, Stack, Typography, Modal, TextField, Button} from '@mui/material';
-import {firestore} from '@/firebase';
+import {Box, Container, Stack, Typography, Modal, TextField, Button} from '@mui/material';
+import {storage, firestore} from '@/firebase';
 import {collection, query, getDocs, setDoc, doc, getDoc } from 'firebase/firestore';
+import {Cam} from './components/Cam.js'
 
 export default function Home() {
   const [inventory, setInventory] = useState([]);
@@ -121,6 +122,8 @@ export default function Home() {
             marginLeft:"40px"}}
         
         variant="outlined"
+        display="flex"
+        alignItems="center"
         margin="normal"
         value={searchTerm}
         
@@ -158,6 +161,13 @@ export default function Home() {
           ))}
       </Stack>
       </Box>
+      <Container display="flex" justifyContent="center">
+        <Box>
+            <Cam />
+        </Box>
+      </Container>
+      
     </Box>
+    
   )
 }
