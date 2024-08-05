@@ -1,11 +1,12 @@
 import React, { useState, useRef } from "react";
 import axios from "axios";
 import { Camera } from "react-camera-pro";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { storage } from '@/firebase'; // Make sure to import your firebase config
 
-const Cam = () => {
+const Cam = ({ onObjectIdentified }) => {
   const camera = useRef(null);
   const [image, setImage] = useState(null);
-  const [identifiedObject, setIdentifiedObject] = useState("");
   const [loading, setLoading] = useState(false);
 
   const convertToBase64 = (blob) => {
@@ -17,32 +18,47 @@ const Cam = () => {
     });
   };
 
+  const uploadImageToStorage = async (imageFile) => {
+    const imageRef = ref(storage, `images/${imageFile.name}`);
+    await uploadBytes(imageRef, imageFile);
+    const downloadURL = await getDownloadURL(imageRef);
+    return downloadURL;
+  };
+
   const analyzeImage = async (base64Image, userPrompt) => {
-    console.log(base64Image, " WE GOT THIS");
     try {
       const response = await axios.post('/api/getImageDescription', {
         imageData: base64Image,
         userPrompt,
       });
-      setIdentifiedObject(response.data.text);
+      const identifiedObject = response.data.text;
+      
+      // Upload the image to Firebase Storage
+      const blob = await (await fetch(base64Image)).blob();
+      const imageFile = new File([blob], "photo.jpg", { type: "image/jpeg" });
+      const imageUrl = await uploadImageToStorage(imageFile);
+
+      onObjectIdentified(identifiedObject, imageUrl);
     } catch (error) {
       console.error('Error analyzing image:', error);
     }
   };
 
-  const handleTakePhoto = () => {
+  const handleTakePhoto = async () => {
+    setLoading(true);
     try {
       const photoDataUrl = camera.current.takePhoto();
       setImage(photoDataUrl);
 
       // Convert the data URL to a Blob
-      fetch(photoDataUrl)
-        .then(res => res.blob())
-        .then(blob => convertToBase64(blob))
-        .then(base64Image => analyzeImage(base64Image, "Describe this image"))
-        .catch(err => console.error("Error processing photo data:", err));
+      const blob = await (await fetch(photoDataUrl)).blob();
+      const base64Image = await convertToBase64(blob);
+      
+      analyzeImage(base64Image, "Classify this image as an object, use one noun. The noun can be multi-word, but just return one noun. Do not use words 'A' and capitalize the first letter of words as if it were a proper noun.");
     } catch (error) {
       console.error("Error taking photo:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -64,13 +80,6 @@ const Cam = () => {
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20px', flexDirection: "column" }}>
           <div style={{ textAlign: 'center' }}>Your Photo</div>
           <img src={image} alt='Taken photo' style={{ width: '400px', height: 'auto' }} />
-        </div>
-      )}
-
-      {identifiedObject && (
-        <div style={{ marginTop: '20px', textAlign: 'center' }}>
-          <h3>Identified Object:</h3>
-          <p>{identifiedObject}</p>
         </div>
       )}
     </div>
