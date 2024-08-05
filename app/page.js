@@ -29,12 +29,6 @@ export default function Home() {
     
     setInventory(inventoryList);
   } 
-  const uploadImageToStorage = async (imageFile) => {
-    const imageRef = ref(storage, `images/${imageFile.name}`);
-    await uploadBytes(imageRef, imageFile);
-    const downloadURL = await getDownloadURL(imageRef);
-    return downloadURL;
-  };
   const addItem = async (item, image) => {
     console.log("adding item")
     if (!item || !image) {
@@ -105,7 +99,7 @@ export default function Home() {
     };
 
   return (
-    <Box width = "100vw" flexDirection="column" height = "100vh" display = "flex" sx={{justifyContent:"center", alignItems: "center", overflow:"auto", height:"100%", margin:"50px" }} gap={2} >
+    <Box width = "100vw" flexDirection="column" height = "100vh" display = "flex" sx={{justifyContent:"center", alignItems: "center", overflow:"auto", height:"100%", marginTop:"50px" }} gap={2} >
       <Modal open={open} onClose={handleClose} >
         <Box position="absolute" top="50%" left="50%" sx={{transform: "translate(-50%, -50%)",}} width={400} bgcolor="white" border="2px solid #000" boxShadow={24} p={4} display="flex" flexDirection="column" gap={3}>
 
@@ -122,7 +116,7 @@ export default function Home() {
           <Button
           variant="outlined"
           onClick={() => {
-            addItem(itemName)
+            addItem(itemName, "NA")
             setItemName('')
             handleClose()
           }}>Add
